@@ -180,17 +180,19 @@ if __name__ == "__main__":
         check_auto=sys.argv[1]
     except: 
         print("Required Option 1 Missing. (Filename or '-auto')")
-
-    try:
-        row_start=sys.argv[2]
-    except: 
-        print("Optional Option 2 Missing. (Begin row X)")
         
-    try:
-        fields=sys.argv[3]
-    except: 
-        print("Optional Option 3 Missing. (List of fields, e.g. 1,2,3,4,10)")    
-    
+    if len(sys.argv) > 2:
+        try:
+            row_start=sys.argv[2]
+        except: 
+            print("Optional Option 2 Missing. (Begin row X)")
+        
+    if len(sys.argv) > 3:    
+        try:
+            fields=sys.argv[3]
+        except: 
+            print("Optional Option 3 Missing. (List of fields, e.g. 1,2,3,4,10)")    
+        
   
     if check_auto == "-auto":
         autowrite()
