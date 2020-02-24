@@ -221,11 +221,13 @@ if __name__ == "__main__":
     #Prepare Owner to Email Mapping
     mapOwners()
 
-
-    try:
-        check_auto=sys.argv[1]
-    except: 
-        print("Required Option 1 Missing. (Filename or '-auto')")
+    if len(sys.argv) > 1:
+        try:
+            check_auto=sys.argv[1]
+        except: 
+            print("Required Option 1 Missing. (Filename or '-auto')")
+    else:
+        check_auto="-auto"
         
     if len(sys.argv) > 2:
         try:
