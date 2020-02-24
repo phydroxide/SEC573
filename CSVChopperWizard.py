@@ -5,14 +5,35 @@ import errno
 import time
 
 
-   
+
+
+def mapOwners():
+#Owner Map Function. File containing name mapping should be in directory as a parent to input
+    #Open ownermap file
+    with open("ownermap.csv", "r") as input_handler:     
+        reader=csv.reader(input_handler, skipinitialspace=True, delimiter=',', quotechar='"')
+        global ownermap_dict
+        ownermap_dict={}
+        for line in reader:
+            #Convert into dictionary entry ownermap[col_1_owner]=col_2_email. Zero-based list
+            ownermap_dict[line[0]]=line[1]
+        input_handler.close
+      
 def namesFromList(field_tuple):
+#The column needed paired with the value of that column. 
+    #Mapping this function gives me just a list of column names
     return(field_tuple[1])
 
 def printFields(field_tuple):
-    print("{}: {}".format(field_tuple[0],field_tuple[1]))
+#Print a list of all the columns for a menu.
+    #print("{}: {}".format(field_tuple[0],field_tuple[1]))
+    return("{}: {}".format(field_tuple[0],field_tuple[1]))
     
 def fileToDict(input_handler, startrow=0, which_columns=""):
+#Read the file into a python dictionary following SCS Compliance rules Kjirsten gave.  
+#File to Dict takes an input handler and the row to start on. 
+#It returns a list of dictionaries and another of fields
+    
     #https://confluence.rightnowtech.com/display/SaaSComp/Vulnerability+Management+Tooling+-+ORCA
     #Remove
     #3 D: NetBIOS 
@@ -29,48 +50,67 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     #36 AK: Ticket State
     #37 AL: Instance
     
-
-    #File to Dict takes an input handler and the row to start on. 
-    #It returns a list of dictionaries and another of fields
+    #Inject column at the end:
+    #Owner
     
     #Skip lines until the line specified
     for skipfirst in range(1,startrow,1):
         print("Dropping Row: {}".format(skipfirst)) 
-        print("Containing: {}\n".format(next(input_handler))) 
+        contents=next(input_handler)
+        #print("Containing: {}\n".format(contents)) 
     time.sleep(1)    
     
     #We have to read the first row to get the headers    
-    reader=csv.DictReader(input_handler)
+    reader=csv.DictReader(input_handler, skipinitialspace=True)
+ 
     #So hold onto this first row
     holddict=next(reader)
+    owner=holddict["Asset Short Name"]
+    holddict.update({'Owner':ownermap_dict[holddict["Asset Short Name"]]})
+
     
     #Now Read the fields and print a menu
     fieldlist=list(enumerate(reader._fieldnames))
     maplist=list(map(printFields, fieldlist))
-        
+    
+    #If user didn't specify columns on the command line, prompt and set with user input.     
     if not which_columns:
-        print(maplist)
+        for item in maplist:
+            print(item)
         print("Pick Which Columns From Above (e.g. 1,2,3,5).")
         column_set=input("Specify * for All, 'default' for ORCA2020 format: ")
+    #If they did specify columns by a keyword, 
+    #prepare to expand by temporarily setting columns to the same value
     elif which_columns=="default":
         column_set="default"
+    #If they did pass the values take them as is. 
     else:
         column_set=which_columns    
  
-    if column_set=="default":
+    #Now expand the values for any special keyword if any
+    if column_set=="default" or  column_set =="":
         column_set="0,1,2,5,7,8,9,10,11,12,16,17,18,19,20,21,23,26,27,28,31,32,33,34,35,38"
        
     #The names list contains the string values of the dictionary keys
     nameslist=[]
     
+    #If the user just said everything, we have to expand that for them.
+    #We just use what was read in, but also append the owner column for the header.
     if column_set  == "*":
         nameslist=list(map(namesFromList,fieldlist))
-        print(nameslist)
+        nameslist.append('Owner')
+        print("Using All Columns:\n {}\n".format(nameslist))
+    #If not everything, we have to go through and pick out specific ones.
+    #Use the index they specified to create the list of friendly names
+    #Again set the Owner column because the header list has been reset, 
+    #Also, owner belongs at the end.
     else:
         nameslist=[]
         for index in column_set.split(","):
             nameslist.append(fieldlist[int(index)][1])
-        print("{}\n".format(nameslist))
+        nameslist.append('Owner')
+
+        print("Using Columns:\n {}\n".format(nameslist))
         time.sleep(1)
         
     #Prepare to return the list of dictionary rows
@@ -80,11 +120,10 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     #Build the list. Use an iterator if you want to stop in the middle
     #i=0  
     for row in reader:
-        #i=i+1
-        #print(i)
+        owner=row["Asset Short Name"]
+        ownerEmail=ownermap_dict[owner]
+        row.update({'Owner':ownerEmail})
         dictlist.append(row) 
-        #if i==1:
-        #    break
     return(dictlist, nameslist)    
 
 def autowrite(): 
@@ -108,6 +147,8 @@ def autowrite():
             print("Now Reading {}.\n".format(infile))
             time.sleep(1)
             print("Using ORCA Defaults to prepare file.\n")
+            time.sleep(1)
+
             with open(indir + "/" + infile, "r") as input_handler:     
                 ordered_dict,nameslist=fileToDict(input_handler,19,"default")  
             input_handler.close
@@ -176,6 +217,11 @@ if __name__ == "__main__":
     check_auto=""
     fields=""
     row_start=0
+    
+    #Prepare Owner to Email Mapping
+    mapOwners()
+
+
     try:
         check_auto=sys.argv[1]
     except: 
