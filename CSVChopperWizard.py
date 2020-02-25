@@ -73,7 +73,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     environmentparts=ownerenvironment.split(",")
     asset_group=environmentparts[0][13::]
     owner=ownermap_dict[asset_group]
-    holddict.update({'Asset Name Chopped':asset_group})
+    holddict.update({'Asset Short Name':asset_group})
    
     holddict.update({'Owner':owner})
 
@@ -97,7 +97,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
  
     #Now expand the values for any special keyword if any
     if column_set=="default" or  column_set =="":
-        column_set="0,1,2,5,7,8,9,10,11,12,16,17,18,19,20,21,23,26,27,28,31,32,33,34,35,38,40"
+        column_set="0,1,2,5,7,8,9,10,11,12,16,17,18,19,20,21,23,26,27,28,31,32,33,34,35,38,39"
        
     #The names list contains the string values of the dictionary keys
     nameslist=[]
@@ -133,7 +133,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
         environmentparts=ownerenvironment.split(",")
         asset_group=environmentparts[0][13::]
         owner=ownermap_dict[asset_group]    
-        row.update({'Asset Name Chopped':asset_group})
+        row.update({'Asset Short Name':asset_group})
         row.update({'Owner':owner})
         
         dictlist.append(row) 
@@ -187,7 +187,7 @@ def autowrite():
             output_handler.close()
             
             with open(assetfile, "w", newline='\n', encoding='utf-8') as output_handler:
-                writer=csv.DictWriter(output_handler, ['Asset Name Chopped','Owner'], extrasaction="ignore")
+                writer=csv.DictWriter(output_handler, ['Asset Short Name','Owner'], extrasaction="ignore")
                 for dictitem in ordered_dict:
                     writer.writerow(dictitem)
             output_handler.close()
