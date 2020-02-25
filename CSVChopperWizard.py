@@ -4,6 +4,10 @@ import os
 import errno
 import time
 
+from _collections import defaultdict
+
+global ownermap_dict
+ownermap_dict=defaultdict(lambda:"")
 
 
 
@@ -12,8 +16,7 @@ def mapOwners():
     #Open ownermap file
     with open("ownermap.csv", "r") as input_handler:     
         reader=csv.reader(input_handler, skipinitialspace=True, delimiter=',', quotechar='"')
-        global ownermap_dict
-        ownermap_dict={}
+        print(ownermap_dict)
         for line in reader:
             #Convert into dictionary entry ownermap[col_1_owner]=col_2_email. Zero-based list
             ownermap_dict[line[0]]=line[1]
@@ -51,6 +54,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     #37 AL: Instance
     
     #Inject column at the end:
+    #Asset Name Chopped ("Asset Short Name" Calculated here)
     #Owner
     
     #Skip lines until the line specified
@@ -62,15 +66,19 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     
     #We have to read the first row to get the headers    
     reader=csv.DictReader(input_handler, skipinitialspace=True)
- 
+    
     #So hold onto this first row
     holddict=next(reader)
-    owner=holddict["Asset Short Name"]
-    holddict.update({'Owner':ownermap_dict[holddict["Asset Short Name"]]})
+    ownerenvironment=holddict["CVSS Environment"]
+    environmentparts=ownerenvironment.split(",")
+    asset_group=environmentparts[0][13::]
+    owner=ownermap_dict[asset_group]
+    holddict.update({'Asset Name Chopped':asset_group})
+   
+    holddict.update({'Owner':owner})
 
-    
     #Now Read the fields and print a menu
-    fieldlist=list(enumerate(reader._fieldnames))
+    fieldlist=list(enumerate(holddict.keys()))
     maplist=list(map(printFields, fieldlist))
     
     #If user didn't specify columns on the command line, prompt and set with user input.     
@@ -89,7 +97,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
  
     #Now expand the values for any special keyword if any
     if column_set=="default" or  column_set =="":
-        column_set="0,1,2,5,7,8,9,10,11,12,16,17,18,19,20,21,23,26,27,28,31,32,33,34,35,38"
+        column_set="0,1,2,5,7,8,9,10,11,12,16,17,18,19,20,21,23,26,27,28,31,32,33,34,35,38,40"
        
     #The names list contains the string values of the dictionary keys
     nameslist=[]
@@ -98,7 +106,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     #We just use what was read in, but also append the owner column for the header.
     if column_set  == "*":
         nameslist=list(map(namesFromList,fieldlist))
-        nameslist.append('Owner')
+#        nameslist.append('Owner')
         print("Using All Columns:\n {}\n".format(nameslist))
     #If not everything, we have to go through and pick out specific ones.
     #Use the index they specified to create the list of friendly names
@@ -108,7 +116,7 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
         nameslist=[]
         for index in column_set.split(","):
             nameslist.append(fieldlist[int(index)][1])
-        nameslist.append('Owner')
+        #nameslist.append('Owner')
 
         print("Using Columns:\n {}\n".format(nameslist))
         time.sleep(1)
@@ -120,9 +128,14 @@ def fileToDict(input_handler, startrow=0, which_columns=""):
     #Build the list. Use an iterator if you want to stop in the middle
     #i=0  
     for row in reader:
-        owner=row["Asset Short Name"]
-        ownerEmail=ownermap_dict[owner]
-        row.update({'Owner':ownerEmail})
+        
+        ownerenvironment=row["CVSS Environment"]
+        environmentparts=ownerenvironment.split(",")
+        asset_group=environmentparts[0][13::]
+        owner=ownermap_dict[asset_group]    
+        row.update({'Asset Name Chopped':asset_group})
+        row.update({'Owner':owner})
+        
         dictlist.append(row) 
     return(dictlist, nameslist)    
 
@@ -154,6 +167,8 @@ def autowrite():
             input_handler.close
 
             outfile = outdir + "/" + infile 
+            
+            assetfile = outdir + "/" + "assets-" + infile
 
             if not os.path.exists(os.path.dirname(outfile)):
                 try:
@@ -169,6 +184,14 @@ def autowrite():
                 for dictitem in ordered_dict:
                     writer.writerow(dictitem)
             time.sleep(1)
+            output_handler.close()
+            
+            with open(assetfile, "w", newline='\n', encoding='utf-8') as output_handler:
+                writer=csv.DictWriter(output_handler, ['Asset Name Chopped','Owner'], extrasaction="ignore")
+                for dictitem in ordered_dict:
+                    writer.writerow(dictitem)
+            output_handler.close()
+
             
 #BEGIN MAIN   
 def interactive(file_passed, start_row, field_string):
