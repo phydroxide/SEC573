@@ -12,3 +12,7 @@ dd if=photo.jpg of=image2.raw bs=128 seek=8 conv=notrunc
 
 md5sum input/photo.jpg output/photo.jpg 
 
+
+for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do for j in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do echo -e -n "\x$i$j" >> seq.hex; done; done
+
+echo -n ABCD > ABCD.txt
