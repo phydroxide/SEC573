@@ -1,0 +1,4 @@
+uuidgen > pattern.txt
+if=/dev/urandom of=./image.raw bs=512 count=8
+if=pattern.txt of=image.raw bs=128 seek=8 conv=notrunc
+
