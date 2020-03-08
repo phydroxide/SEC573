@@ -2,3 +2,13 @@ uuidgen > pattern.txt
 if=/dev/urandom of=./image.raw bs=512 count=8
 if=pattern.txt of=image.raw bs=128 seek=8 conv=notrunc
 
+
+#cp image2.raw image.raw
+#dd if=photo.jpg of=image.raw bs=128 seek=8 conv=notrunc
+#dd if=/dev/urandom of=image2.raw conv=notrunc bs=1 seek=3020 count=512
+
+dd if=/dev/urandom of=image2.raw conv=notrunc bs=1 count=5000
+dd if=photo.jpg of=image2.raw bs=128 seek=8 conv=notrunc
+
+md5sum input/photo.jpg output/photo.jpg 
+

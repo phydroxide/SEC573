@@ -1,9 +1,9 @@
 import re
 import os
-s_bytes=4 #int(input("Match (number) of beginning bytes:"))
-e_bytes=4 #int(input("Match (number) of ending bytes:"))
+s_bytes=2 #int(input("Match (number) of beginning bytes:"))
+e_bytes=2 #int(input("Match (number) of ending bytes:"))
 
-with open("input/pattern.txt", "rb") as input_handler:
+with open("input/photo.jpg", "rb") as input_handler:
     pattern=input_handler.read()
 
 pat_len=int(len(pattern))
@@ -14,10 +14,16 @@ begin=int(pat_len-e_bytes)
 closing=pattern[begin::]
 print("From {} to {}".format(opening,closing))
         
-with open("input/image.raw", "rb") as input_handler:
+with open("input/image2.raw", "rb") as input_handler:
     image=input_handler.read() 
     
-contents=re.findall(opening + b".*" + closing, image)   
-   
+expression=opening+b"..*"+closing
+print(expression)
+contents=re.findall(expression, image, re.DOTALL )   
 print(contents)
+with open("output/photo.jpg", "wb") as output_handler:
+    for bytesfound in contents:
+        output_handler.write(bytesfound)
+       
+
     
