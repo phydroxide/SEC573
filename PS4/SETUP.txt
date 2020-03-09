@@ -16,3 +16,15 @@ md5sum input/photo.jpg output/photo.jpg
 for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do for j in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do echo -e -n "\x$i$j" >> seq.hex; done; done
 
 echo -n ABCD > ABCD.txt
+echo -n LMNOPQRS > LMNOPQRS.txt
+
+
+dd if=/dev/urandom of=./MineCraft bs=1 count=5300000
+dd if=./BedrockUserSettingsStorage of=./MineCraft seek=10000 bs=1 conv=notrunc
+dd if=/dev/zero of=./MineCraft seek=5252880 bs=1 count=16 conv=notrunc
+hexdump -C ./Minecraft
+
+dd if=/dev/urandom of=./MineCraft bs=1 count=5243136
+dd if=./BedrockUserSettingsStorage of=./MineCraft seek=128 bs=1 conv=notrunc
+dd if=/dev/zero of=./MineCraft seek=5252880 bs=1 count=16 conv=notrunc
+5243136 records out
