@@ -1,6 +1,7 @@
 import re
 import time
 import hashlib
+from _ast import Try
 
 #Yield Generator to iterate over file reading small chunks
 def bufferedSample(filehandle, size=512):
@@ -16,6 +17,9 @@ while True:
         break
     except:
         print("Expecting Integer Number")
+#TODO Start Byte offset
+#length 16129000000 slice 15875000000:
+#and cleanup in yield
 
 #while True: 
 #    try:
@@ -32,7 +36,10 @@ while True:
 
 
 #Read in pattern to match and capture user's desires on where to start/end
-pattern_file="input/BedrockUserSettingsStorage"
+#pattern_file="input/BedrockUserSettingsStorage"
+#pattern_file="input/BedrockUserSettingsStorage.bin"
+pattern_file="input/MineCraft"
+
 with open(pattern_file, "rb") as input_handler:
     pattern=input_handler.read()
 
@@ -72,6 +79,9 @@ end_pattern=pattern[end_index::]
 print("Searching for patterns starting \n{} and ending \n{}\n\n".format(start_pattern,end_pattern))
 time.sleep(1)
 
+#override for my minecraft data
+end_pattern=b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" #+end_pattern
+#end_pattern=b".{39,80}" #+end_pattern
 
 #Construct regular expression to search
 re_expression=br''.join([start_pattern,br"..*",end_pattern]) #b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" #+end_pattern
@@ -83,6 +93,12 @@ print(re_expression)
             
 contents={}
 #contents[empty_digest]=b""
+
+
+#print(list(contents.items()))  
+#time.sleep(3)
+
+
 last_chunk=bytearray(br'')
 print("Byte Builder zeroed out to length {}".format(len(last_chunk)))
 buffer_limit=2*file_size
@@ -90,57 +106,79 @@ buffer_limit=2*file_size
 #imagefile="/media/pwaters/56e05090-43ef-4899-826f-ccf168689305/PS4/sdb27copy"
 imagefile="input/MineCraft"
 with open(imagefile, "rb") as image_handler:
-    for image_part in bufferedSample(image_handler, file_size):
-        buffer_string=br''.join([last_chunk,image_part])
-        new_length=len(buffer_string)
-        print("Total Byte Builder Length {}".format(new_length))
-        #Show Start and End of current sample read
-        #5243136
-        #grid_start=re.findall(b"..",buffer_string[0:256:])
-        #grid_stop=re.findall(b"..",buffer_string[-260::])
-        
+    try: 
+        for image_part in bufferedSample(image_handler, file_size):
+            buffer_string=br''.join([last_chunk,image_part])
+            new_length=len(buffer_string)
+            #print("Total Byte Builder Length {}".format(new_length))
+            #Show Start and End of current sample read
+            #5243136        
 
-        start_list=[x.hex() for x in re.findall(b".",buffer_string[0:256:], re.DOTALL)]
-        for row in range(0,16):
-            print(start_list[(row*16):(row+1)*16])
-            
-        print("........")
+            #start_list=[x.hex() for x in re.findall(b".",buffer_string[0:256:], re.DOTALL)]
+            #for row in range(0,16):
+            #    print(start_list[(row*16):(row+1)*16])
+            #    
+            #print("........")
         
-        #One off troubleshooting adjustment for hex display alignment with linux dd
-        #e.g (b".",buffer_string[-258::]
-        #The file handle reader is eating my 0x0a newlines and the grid goes out of alignment.
-        #Solve with re.DOTALL
-        stop_list=[x.hex() for x in re.findall(b".",buffer_string[-256::], re.DOTALL)]
-        for row in range(0,16):
-            print(stop_list[(row*16):(row+1)*16])
-            
-        print("Sample Chunks of lengths {} and {}".format(len(start_list),len(stop_list)))
+            #One off troubleshooting adjustment for hex display alignment with linux dd
+            #e.g (b".",buffer_string[-258::]
+            #The file handle reader is eating my 0x0a newlines and the grid goes out of alignment.
+            #Solve with re.DOTALL
+            #stop_list=[x.hex() for x in re.findall(b".",buffer_string[-256::], re.DOTALL)]
+            #for row in range(0,16):
+            #    print(stop_list[(row*16):(row+1)*16])
+             
+            #print("Sample Chunks of lengths {} and {}".format(len(start_list),len(stop_list)))
 
-        last_chunk=buffer_string
-        if (new_length > buffer_limit):
-            trunc_start=new_length-buffer_limit 
-            print("Truncate Image part of length {} starting index slice {}:".format(new_length,trunc_start))
-            buffer_string=bytes(buffer_string[trunc_start::])
+            last_chunk=buffer_string
+            if (new_length > buffer_limit):
+                trunc_start=new_length-buffer_limit 
+                print("length {} slice {}:".format(new_length,trunc_start))
+                buffer_string=bytes(buffer_string[trunc_start::])
             
-        #print(buffer_string)
-        results=re.findall(br"".join([re_expression]), buffer_string, re.DOTALL)
+                #print(buffer_string)
+            try:
+                results=re.findall(br"".join([re_expression]), buffer_string, re.DOTALL)   
+                print("Done {} \n {}".format(len(results),contents.keys()))
+                #time.sleep(1)
+                #Take results from this chunk and append to found dictionary
+                for result in results:
+                    hasher=hashlib.md5()
+                    hasher.update(result)
+                    result_hash=hasher.hexdigest()
+                    contents[result_hash]=bytes(result)  
+                for entry in contents.values():
+                    print("Length {} | Type {} | ID {}".format(len(entry), type(entry), id(entry)))
+                for hash_result,bytesfound in list(contents.items()):
+                    with open("output/" + str(hash_result) + "", "wb") as output_handler:
+                        output_handler.write(bytesfound)
+                contents={}
+                #contents[empty_digest]=b""           
+            except (MemoryError) as e:
+                #print("interrupted. Now will write file {}".format(e))
+                #for entry in contents.values():
+                #    print("Length {} | Type {} | ID {}".format(len(entry), type(entry), id(entry)))
+                #for hash_result,bytesfound in list(contents.items()):
+                #    with open("output/" + str(hash_result) + "", "wb") as output_handler:
+                #        output_handler.write(bytesfound)
+                contents={}
+                contents[empty_digest]=b""
+            except (KeyboardInterrupt):
+                raise
+            #finally:   
+            #    print("Yay I stayed in the loop!")
+    except KeyboardInterrupt:
+        print("Interrupted, Cleaning Up")
+        for entry in contents.values():
+            print("interrupted. Now will write file {}".format(e))
+            print("Length {} | Type {} | ID {}".format(len(entry), type(entry), id(entry)))
+            for hash_result,bytesfound in list(contents.items()):
+                with open("output/" + str(hash_result) + "", "wb") as output_handler:
+                    output_handler.write(bytesfound)
+                
         
-        print("Done")
-        time.sleep(1)
-        #Take results from this chunk and append to found dictionary
-        for result in results:
-            hasher=hashlib.md5()
-            hasher.update(result)
-            result_hash=hasher.hexdigest()
-            contents[result_hash]=bytes(result)         
-    
 #print(contents)
-for entry in contents.values():
-    print("Length {} | Type {} | ID {}".format(len(entry), type(entry), id(entry)))
-        
-for index,bytesfound in enumerate(contents.values()):
-    with open("output/message" + str(index) +".txt", "wb") as output_handler:
-        output_handler.write(bytesfound)
+    
        
 
     
