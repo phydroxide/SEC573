@@ -4,17 +4,9 @@ import gc
 import os
 import struct
 import io
-
-#Open Sample File
-#Open Device 
-#Find instance where file begins
-#Find File Size
-#Start from beginning and grab file of size x
-#Write file with Hash name
-#Look above and below for pfskey
-
-
-
+# Philip Waters
+# Carves encrypted minecraft save data from PS4
+# Does not find key data unless it is from a key exported during saved data management
 
 #Yield Generator to iterate over file reading small chunks
 def bufferedSample(filehandle, size=32768):
@@ -78,16 +70,15 @@ def debugOutput(buffer_string):
     for row in range(0,16):
         print(stop_list[(row*16):(row+1)*16])
         
-#imagefile="/media/pwaters/56e05090-43ef-4899-826f-ccf168689305/dev/sdb27"       
-#imagefile="/media/pwaters/56e05090-43ef-4899-826f-ccf168689305/PS4/sdb27copy"
 imagefile="input/MineCraft"
+#imagefile="/media/pwaters/56e05090-43ef-4899-826f-ccf168689305/dev/sdb27"       
 #imagefile="input/BedRockTest"
-#imagefile="/media/pwaters/56e05090-43ef-4899-826f-ccf168689305/PS4/sdb7copy"
 
 #file_size_in_mb=115 #(5,30,60,90...)
 #bytes_per_part=32
 #sizecode=hex(file_size_in_mb*bytes_per_part)
 
+#Some examples of files I found. 
 #be00 = 48640 * 32768 = 1593835520 = 1.5GB  1520
 #bd04 = 48388 * 32768 = 1585577984 =1.5 GB 1512
 #0e43 = 3651 * 32768 = 115MB
@@ -99,19 +90,20 @@ imagefile="input/MineCraft"
 #00a0 = 160 / 5 = 32
 #0008 = 8*32768 = 262144
 
+#Maximum Size we're looking for.
 sizecode=hex(63004)
-print(sizecode)
+print("Maximum Size Code that can be found is {}".format(sizecode))
 bytes_per_block=32*1024
-file_size=int(sizecode,16)*bytes_per_block
+max_size=int(sizecode,16)*bytes_per_block
 
-
-
-#TODO - Why does the block device not always match on more than one row of bytes
-#Comment out later lines for less specificity
+#16-byte lines are appended together for for flexible alteration of match pattern.
+#Where I have found files that are discrepancies from normal, I replace \xBB with .
+#We'll add .* to the end, Join the string together, and pop .* off so we can use it later if we need.
+#We have a dependency on index 0030 (line 4) because there is a match pattern group that holds the size. 
 minecraft_dump=[]
 
 minecraft_dump.append(b''.join([b'\x01\x00\x00\x00\x00\x00\x00\x00\x0b',b'.',b'\x33\x01\x00\x00\x00\x00'])) 
-#\x2a is failing to be treated properly by re
+#\x2a is failing to be treated properly by re. Bug?
 ######################(b'\x01\x00\x00\x00\x00\x00\x00\x00\x0b\x2a\x33\x01\x00\x00\x00\x00') 
 
 minecraft_dump.append(b''.join([b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',b'.',b'\x00\x0d\x00\x00\x00'])) 
@@ -126,13 +118,13 @@ minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00',b'(..)',b'
 #This line contains the file size indicator, also may begin 0004 or 4000
 #######################(b''.join([b'\x00\x04\x00\x00\x00\x00\x00\x00',b'..',b'.',b'\x00\x00\x00\x00\x00']))
 
-minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'])) 
+#minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'])) 
 # bigger file begins 0001, smaller file begins 0017 the rest are zeros, 
 #but all following lines differ enormously between big/small though small/small and big/big have similarities
 #######################(b'\x17\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 
 ##minecraft_dump.append(b'\x00\x00\x01\x00\x1e\x00\x01\x00')
-minecraft_dump.append(b''.join([b'\x00\x00\x01\x00',b'.',b'\x00', b'.', b'\x00']))
+#minecraft_dump.append(b''.join([b'\x00\x00\x01\x00',b'.',b'\x00', b'.', b'\x00']))
 #######################minecraft_dump.append(b'\x00\x00\x01\x00\x1e\x00\x01\x00')
 #minecraft_dump.append(b''.join([b'.{', bytes(suffix_length), b'}']))
 
@@ -143,37 +135,44 @@ minecraft_pattern=b''.join(minecraft_dump)
 #Remove greedy glob in case we want to use the pattern basis later
 del(minecraft_dump[-1])
 
-buffer_limit=2*file_size
+#Minimum Size needed to match the entire file of a data slice that overlaps is filesize*2 - 1 byte. 
+#I'll eat one byte for the doubt and simplicity. We'll use ByteIO to trim it down later 
+#as the ending match pattern is non-deterministic, but the file size code is reliable. 
+buffer_limit=2*max_size
 
 results=[];
 result_hash=b'';
 try: 
-    #for image_part in bufferedSample(image_handler, file_size):
     for image_part in backNibbles(imagefile, buffer_limit):
         try:
             result=re.search(minecraft_pattern, image_part, re.DOTALL)   
             #Take results from this chunk and write a file
             if result: 
-                print("found something")
+                print("Found something")
                 
                 #Extract File Size from the capture group
                 fsize=int(struct.unpack('<h',result.group(1))[0])
-                print("File Claims it should be {}, but I have {} bytes".format(fsize*32768, len(result.group(0))))              
+                result_size=fsize*32*1024
+                print("File Claims it should be {}, but I have {} bytes".format(result_size, len(result.group(0))))              
                 
-                print("{}{}".format(dir(result), type(result.groups())))
-                result_hash=hashlib.md5(result.group(0)).hexdigest()
+                #Trim the file to size
+                trimmed_file=trimBytes(result.group(0),result_size)
+                #Let's save the file according to the hash of the data we want to keep
+                result_hash=hashlib.md5(trimmed_file).hexdigest()
+                
+                #I'm collecting garbage all the time
+                #I confess I don't know how often I need to
+                #Previous versions had memory issues. The execution cost appears minimal
+                #And I need all the memory I can get when I output the files. 
 
                 gc.collect()
                 with open("output/" + str(result_hash) + "", "wb") as output_handler:
-                    output_handler.write(trimBytes(bytes(result.group(0)), fsize*32768))
+                    output_handler.write(trimmed_file)
                 gc.collect()
                 
                            
         except (MemoryError) as e:
             gc.collect()
-            print("trying to write file, no promises though")
-            with open("output/partialresult", "wb") as output_handler:
-                output_handler.write(results[0])
             print(e)
                 
         except (KeyboardInterrupt):
@@ -181,12 +180,10 @@ try:
         finally:   
             print("Garbage Collection")
             gc.collect()
-except KeyboardInterrupt:
-        #print("Interrupted, Cleaning Up")
-        #print("Length {} | Type {} | ID {}".format(len(results), type(results), id(results)))
+except KeyboardInterrupt:    
     for result in results:
         with open("output/" + str(result_hash) + "", "wb") as output_handler:
-            output_handler.write(result)
+            output_handler.write(trimmed_file)
     
                 
         
