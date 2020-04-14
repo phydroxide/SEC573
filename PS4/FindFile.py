@@ -33,7 +33,7 @@ def backNibbles(nibblefile, windowsize=10, skipbyte=0):
     while start_counter < file_length:
         nibble_buffer=deviceNibbler(nibblefile, start_counter, buffer_length)
         start_counter=start_counter+windowsize
-        gc.collect()
+        #gc.collect()
         yield(nibble_buffer)
 
 #Trim Files to size
@@ -168,17 +168,16 @@ try:
                 gc.collect()
                 with open("output/" + str(result_hash) + "", "wb") as output_handler:
                     output_handler.write(trimmed_file)
-                gc.collect()
+                #gc.collect()
                 
                            
         except (MemoryError) as e:
-            gc.collect()
             print(e)
                 
         except (KeyboardInterrupt):
             raise
         finally:   
-            print("Garbage Collection")
+            print("New Image Part. Garbage Collection")
             gc.collect()
 except KeyboardInterrupt:    
     for result in results:
