@@ -102,27 +102,41 @@ max_size=int(sizecode,16)*bytes_per_block
 #We have a dependency on index 0030 (line 4) because there is a match pattern group that holds the size. 
 minecraft_dump=[]
 
+#LINE1
 minecraft_dump.append(b''.join([b'\x01\x00\x00\x00\x00\x00\x00\x00\x0b',b'.',b'\x33\x01\x00\x00\x00\x00'])) 
 #\x2a is failing to be treated properly by re. Bug?
 ######################(b'\x01\x00\x00\x00\x00\x00\x00\x00\x0b\x2a\x33\x01\x00\x00\x00\x00') 
 
-minecraft_dump.append(b''.join([b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',b'.',b'\x00\x0d\x00\x00\x00'])) 
+#LINE2
+#minecraft_dump.append(b''.join([b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',b'.',b'\x00\x0d\x00\x00\x00'])) 
 #Bigger file ends 000001000d000000, smaller file 000000000d000000
 #####################(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0d\x00\x00\x00')
+#Make it more generic 
+minecraft_dump.append(b''.join([b'.{16}'])) 
 
-minecraft_dump.append(b''.join([b'\x00',b'.',b'.',b'\x00',b'.',b'\x00\x00\x00',b'\x01\x00\x00\x00\x00\x00\x00\x00'])) 
+#LINE3
+#minecraft_dump.append(b''.join([b'\x00',b'.',b'.',b'\x00',b'.',b'\x00\x00\x00',b'\x01\x00\x00\x00\x00\x00\x00\x00'])) 
 #Older file starts 0080000001 new file starts 000010000
 #######################(b'\x00\x80\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00')
+#Make it more Generic
+minecraft_dump.append(b''.join([b'.{16}'])) 
 
-minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00',b'(..)',b'\x00\x00\x00\x00\x00\x00'])) 
+
+#LINE4
+#minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00',b'(..)',b'\x00\x00\x00\x00\x00\x00'])) 
 #This line contains the file size indicator, also may begin 0004 or 4000
 #######################(b''.join([b'\x00\x04\x00\x00\x00\x00\x00\x00',b'..',b'.',b'\x00\x00\x00\x00\x00']))
+#Make it more Generic
+minecraft_dump.append(b''.join([b'.{8}(..).{6}'])) 
 
+
+#LINE5
 #minecraft_dump.append(b''.join([b'.',b'.',b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'])) 
 # bigger file begins 0001, smaller file begins 0017 the rest are zeros, 
 #but all following lines differ enormously between big/small though small/small and big/big have similarities
 #######################(b'\x17\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 
+#LINE6
 ##minecraft_dump.append(b'\x00\x00\x01\x00\x1e\x00\x01\x00')
 #minecraft_dump.append(b''.join([b'\x00\x00\x01\x00',b'.',b'\x00', b'.', b'\x00']))
 #######################minecraft_dump.append(b'\x00\x00\x01\x00\x1e\x00\x01\x00')
